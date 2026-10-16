@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tracelens"
+version = "0.1.0"
+description = "Local-first Wi-Fi survey report writer for installers: load a PCAP, review evidence, draft a report."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+# Pinned to the versions the app is developed and tested against.
+dependencies = [
+    "scapy==2.8.0",
+    "textual==8.2.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.4.2",
+]
+
+[project.scripts]
+tracelens = "tracelens.app:main"
+
+[tool.setuptools.packages.find]
+include = ["tracelens*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
