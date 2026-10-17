@@ -7,8 +7,9 @@ machine.
 
 TraceLens is under active development. The current build provides the
 capture-analysis core (reader + evidence analyzer) as a tested Python
-package; the terminal UI, local-model explanations, and report export arrive
-in upcoming branches.
+package plus a terminal UI (Textual) for the load → analyze → review
+evidence/limitations flow; local-model explanations and report export
+arrive in upcoming branches.
 
 ## What it does today
 
@@ -51,7 +52,27 @@ python3 -m venv .venv
 .venv/bin/python -m pytest
 ```
 
-## Using the library (TUI coming in a later branch)
+## Using the terminal UI
+
+```bash
+.venv/bin/tracelens
+```
+
+Then:
+
+1. Type the path to a capture you own or are authorized to inspect
+   (PCAP or PCAPNG) and press Enter.
+2. TraceLens validates the file read-only and analyzes it locally.
+3. The evidence screen lists measured facts (frame mix, channels, SSIDs,
+   retry rate, RSSI when present, client association activity) and the
+   limitations of this capture — what it cannot support, stated explicitly.
+4. Press Escape to go back and analyze another capture.
+
+Reader/analyzer failures (missing file, wrong format, truncation) are shown
+on the entry screen as friendly messages; the app never crashes on a bad
+path.
+
+## Using the library
 
 ```python
 from tracelens.reader import load_capture
@@ -82,7 +103,7 @@ Facts are safe to serialize to JSON.
 
 ## Roadmap
 
-1. Terminal UI (Textual): pick a capture, review evidence and limitations.
+1. ~~Terminal UI (Textual): pick a capture, review evidence and limitations.~~
 2. Optional local-model explanations via Ollama (never required; evidence
    works without it).
 3. Editable Markdown report export with site notes and anonymization.
