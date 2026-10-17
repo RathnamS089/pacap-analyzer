@@ -28,6 +28,8 @@ from tracelens.reader import load_capture
 AP_MAC = "aa:bb:cc:dd:ee:02"
 CLIENT_MAC = "aa:bb:cc:dd:ee:04"
 SITE_SSID = "SiteNet"
+OTHER_MAC = "aa:bb:cc:dd:ee:06"
+OTHER_SSID = "OtherNet"
 
 _RADIOTAP = dict(
     present="TSFT+Flags+Rate+Channel+dBm_AntSignal+Antenna",
@@ -98,7 +100,11 @@ def test_wlan_pcap_full_analysis(tmp_path: Path) -> None:
             },
             {
                 "kind": "beaconed_ssids",
-                "detail": {"ssids": [SITE_SSID], "ssid_counts": {SITE_SSID: 1}},
+                "detail": {
+                    "ssids": [SITE_SSID],
+                    "ssid_counts": {SITE_SSID: 1},
+                    "ssid_bssids": {SITE_SSID: [AP_MAC]},
+                },
             },
             {
                 "kind": "retry_rate",
@@ -147,6 +153,49 @@ def test_wlan_pcapng_full_analysis(tmp_path: Path) -> None:
     }
     assert analysis["facts"][0]["detail"]["packets_analyzed"] == 3
     assert analysis["facts"][1]["detail"]["channels"] == ["1"]
+
+
+def test_bssid_mapped_per_ssid_across_channels(tmp_path: Path) -> None:
+    """Same SSID beaconed by two BSSIDs; a second SSID on another channel."""
+    capture = tmp_path / "multi-bssid.pcap"
+    frames = [
+        RadioTap(**_RADIOTAP)
+        / Dot11(
+            type=0, subtype=8, addr1="ff:ff:ff:ff:ff:ff", addr2=AP_MAC, addr3=AP_MAC
+        )
+        / Dot11Beacon(cap="ESS")
+        / Dot11Elt(ID=0, info=SITE_SSID.encode())
+        / Dot11Elt(ID=3, info=bytes([1])),
+        RadioTap(present="TSFT+Flags+Rate+Channel+dBm_AntSignal", ChannelFrequency=5180, dBm_AntSignal=-40)
+        / Dot11(
+            type=0, subtype=8, addr1="ff:ff:ff:ff:ff:ff", addr2=AP_MAC, addr3=AP_MAC
+        )
+        / Dot11Beacon(cap="ESS")
+        / Dot11Elt(ID=0, info=SITE_SSID.encode())
+        / Dot11Elt(ID=3, info=bytes([36])),
+        RadioTap(present="TSFT+Flags+Rate+Channel+dBm_AntSignal", ChannelFrequency=2437, dBm_AntSignal=-60)
+        / Dot11(
+            type=0, subtype=8, addr1="ff:ff:ff:ff:ff:ff", addr2=OTHER_MAC, addr3=OTHER_MAC
+        )
+        / Dot11Beacon(cap="ESS")
+        / Dot11Elt(ID=0, info=OTHER_SSID.encode())
+        / Dot11Elt(ID=3, info=bytes([6])),
+    ]
+    wrpcap(str(capture), frames)
+
+    analysis = analyze_capture(load_capture(capture))
+
+    ssid_fact = next(
+        fact for fact in analysis["facts"] if fact["kind"] == "beaconed_ssids"
+    )
+    assert ssid_fact["detail"]["ssid_bssids"] == {
+        SITE_SSID: [AP_MAC],
+        OTHER_SSID: [OTHER_MAC],
+    }
+    channel_fact = next(
+        fact for fact in analysis["facts"] if fact["kind"] == "channel_usage"
+    )
+    assert channel_fact["detail"]["channels"] == ["1", "6", "36"]
 
 
 def test_ethernet_capture_reports_no_wlan_evidence(tmp_path: Path) -> None:

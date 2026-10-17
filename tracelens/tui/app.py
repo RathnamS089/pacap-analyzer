@@ -7,6 +7,7 @@ touches the network and never writes to the capture.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from textual.app import App, ComposeResult
@@ -19,6 +20,7 @@ from textual.widgets import (
     ListItem,
     ListView,
     Static,
+    TextArea,
 )
 
 from tracelens.explainer import (
@@ -27,6 +29,7 @@ from tracelens.explainer import (
     ExplainerUnavailable,
     explain_analysis,
 )
+from tracelens.report import build_report, write_report_file
 from tracelens.tui.service import (
     AnalysisError,
     AnalysisResult,
@@ -144,6 +147,7 @@ class AnalysisScreen(Screen):
     BINDINGS = [
         ("escape", "app.pop_screen", "Back to path entry"),
         ("e", "app.request_explanation", "Explain (local model)"),
+        ("r", "app.open_report", "Build report"),
     ]
 
     def __init__(self, result: AnalysisResult) -> None:
@@ -181,6 +185,50 @@ class AnalysisScreen(Screen):
             )
         for limitation in limitations:
             limits_list.append(ListItem(Label(limitation)))
+
+
+class ReportScreen(Screen):
+    """Preview the Markdown report, edit site notes, and save it."""
+
+    BINDINGS = [
+        ("escape", "app.pop_screen", "Back to evidence"),
+    ]
+
+    def __init__(self, result: AnalysisResult) -> None:
+        super().__init__()
+        self.result = result
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Label(
+            "[b]Report[/] — read-only preview; edit site notes, type a .md "
+            "path and press Enter (or s) to save.",
+            id="report-title",
+        )
+        yield Static("", id="report-preview")
+        yield Label("Site notes (editable):", id="notes-label")
+        yield TextArea("", id="site-notes")
+        yield Input(
+            placeholder="/path/to/survey-report.md",
+            id="report-path",
+        )
+        yield Static("", id="report-status")
+        yield Footer()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Enter in the save-path field saves the report."""
+        if event.input.id == "report-path":
+            app = self.app
+            if isinstance(app, TraceLensApp):
+                app.action_save_report()
+
+    def on_mount(self) -> None:
+        report = build_report(self.result.analysis)
+        self.report = report
+        self.query_one("#report-preview", Static).content = report["markdown"]
+
+    def refresh_status(self, message: str) -> None:
+        self.query_one("#report-status", Static).content = message
 
 
 class TraceLensApp(App[None]):
@@ -237,6 +285,46 @@ class TraceLensApp(App[None]):
 
     def action_back_to_entry(self) -> None:
         self.pop_screen()
+
+    def action_open_report(self) -> None:
+        """Open the report preview screen for the current analysis."""
+        if self.analysis is None:
+            return
+        self.push_screen(ReportScreen(self.analysis))
+
+    def action_save_report(self) -> None:
+        """Save the report as Markdown using the path typed on the screen.
+
+        Fail-soft: a bad path shows a friendly message on the report
+        screen, which stays fully usable.
+        """
+        screen = self.screen
+        if not isinstance(screen, ReportScreen):
+            return
+        path_text = ""
+        try:
+            path_text = screen.query_one("#report-path", Input).value.strip()
+        except Exception:  # noqa: BLE001 - screen may not be mounted yet
+            pass
+        if not path_text:
+            screen.refresh_status("Enter a .md file path to save the report.")
+            return
+
+        # Rebuild with the site notes currently in the editor so the saved
+        # report reflects what the user reviewed on screen.
+        report = build_report(
+            screen.result.analysis,
+            site_notes=screen.query_one("#site-notes", TextArea).text,
+        )
+        try:
+            written = write_report_file(report, Path(path_text))
+        except Exception as err:  # noqa: BLE001 - fail soft, keep the screen
+            screen.refresh_status(
+                "Could not save the report: {err}. "
+                "Check the path (a .md file) and try again.".format(err=err)
+            )
+            return
+        screen.refresh_status("Report saved: {path}".format(path=written))
 
     def action_request_explanation(self) -> None:
         """Ask the user's local Ollama model for plain-language notes.

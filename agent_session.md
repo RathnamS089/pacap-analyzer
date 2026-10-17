@@ -64,6 +64,13 @@ when DevRelay tooling is available, this maps to `submit_agent_session`
       "event": "green",
       "detail": "Wired the explainer into the TUI: press 'e' on the evidence screen asks the user's local Ollama model for plain-language notes; fails soft (friendly message in the explanation box, evidence review stays fully usable). TraceLensApp takes explainer_url/explainer_model kwargs for dependency injection so tests drive a fake server. Fixed en route: Textual screen-binding actions need the 'app.' namespace without the action_ prefix ('app.request_explanation' maps to the app's action_request_explanation); and a two-statement string bug where the explanation text was a no-op expression and never reached the box.",
       "evidence": "pytest tests/test_tui_explainer.py: 2 passed; full suite 19 passed in 3.71s"
+    },
+    {
+      "timestamp": "2026-10-17 ~21:55 IST",
+      "branch": "codex/report-builder",
+      "event": "green",
+      "detail": "Implemented the report layer end to end. Analyzer: beacons now map each SSID to the BSSIDs (AP radios) seen beaconing it (new ssid_bssids fact detail; multi-BSSID/multi-channel test added). Builder (tracelens/report.py): build_report renders title + front matter dict (capture_path/date/model_version) + Markdown body from analyzer facts/limitations/notes with an editable Site Notes section kept separate from measured evidence; build_preview returns the body for the read-only TUI screen; write_report_file composes the YAML front-matter block + H1 + body into a .md file and rejects non-.md paths. TUI: 'r' on the evidence screen opens a ReportScreen with read-only preview, editable site-notes TextArea, and a save-path Input — Enter in the path field saves (Textual inputs swallow printable keys, so the 's' binding was dropped); bad save paths fail soft with a friendly status message. Replaced the earlier mis-authored report tests (a beacon-only fixture cannot produce retry/MAC evidence) with a full-scenario fixture. Session-lease crashes twice reverted uncommitted edits mid-branch; state recovered each time from git + rewritten files.",
+      "evidence": "pytest: 29 passed (9 analyzer, 6 report, 3 TUI report, 11 prior)"
     }
   ]
 }

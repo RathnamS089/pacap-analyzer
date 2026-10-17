@@ -83,6 +83,7 @@ def analyze_capture(loaded) -> Dict[str, Any]:
     }
     channel_counts: Counter = Counter()
     ssid_counts: Counter = Counter()
+    ssid_bssids: Dict[str, List[str]] = {}  # SSID -> BSSIDs beaconing with it
     retry_frames = 0
     data_frames_checked = 0
     rssi_values: List[int] = []
@@ -135,11 +136,15 @@ def analyze_capture(loaded) -> Dict[str, Any]:
                 if dot11.subtype == _BEACON_SUBTYPE and packet.haslayer(
                     Dot11Beacon
                 ):
+                    bssid = (dot11.addr2 or "").lower()
                     for element in _iter_elements(dot11):
                         if element.ID == 0:  # SSID parameter set
                             ssid = bytes(element.info).decode("utf-8", "replace")
                             if ssid:
                                 ssid_counts[ssid] += 1
+                                known = ssid_bssids.setdefault(ssid, [])
+                                if bssid and bssid not in known:
+                                    known.append(bssid)
                 elif dot11.subtype == _SUBTYPE_ASSOC_REQ and packet.haslayer(
                     Dot11AssoReq
                 ):
@@ -180,6 +185,10 @@ def analyze_capture(loaded) -> Dict[str, Any]:
                     "ssids": ordered_ssids,
                     "ssid_counts": {
                         ssid: ssid_counts[ssid] for ssid in ordered_ssids
+                    },
+                    "ssid_bssids": {
+                        ssid: ssid_bssids.get(ssid, [])
+                        for ssid in ordered_ssids
                     },
                 },
             }
