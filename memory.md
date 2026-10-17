@@ -80,10 +80,11 @@ Hard rules that must hold in every branch:
 
 ## To-do checkpoint
 
-- [x] ~~1. codex/capture-reader-analyzer — capture reader + evidence
-  analyzer~~ — CANCELLED (completed: 8/8 tests green, staged not committed)
-- [ ] 2. codex/tui-analysis-shell — Textual TUI: path entry → analyze →
-  evidence/limitations review
+- [x] 1. codex/capture-reader-analyzer — capture reader + evidence analyzer
+  (DONE: commit 583b34a, 8/8 tests)
+- [x] 2. codex/tui-analysis-shell — Textual TUI: path entry → analyze →
+  evidence/limitations review (DONE: commit bf5c63f, 13/13 tests; app runs
+  via `.venv/bin/tracelens`; agent_session.md created for DevRelay submission)
 - [ ] 3. codex/ollama-explainer — optional local-model explanations
   (never required; evidence works without it)
 - [ ] 4. codex/report-builder — editable Markdown report with site notes
@@ -92,6 +93,7 @@ Hard rules that must hold in every branch:
 
 ## Next branch recommendation
 
-`codex/tui-analysis-shell` — wire the existing reader + analyzer into the
-user flow (choose capture → analyze → review evidence and limitations)
-before adding the model explainer or report export.
+`codex/ollama-explainer` — the TUI shell is done; next is the optional
+local-model explanation layer. Keep it strictly optional: the evidence
+review flow must work fully without Ollama installed or running. Wrap in
+tests that skip gracefully when no local model is reachable.
