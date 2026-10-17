@@ -88,14 +88,31 @@ Hard rules that must hold in every branch:
 - [x] 3. codex/ollama-explainer — optional local-model explanations
   (DONE: never required, evidence works without it; tests use in-process
   fake Ollama + closed port; press 'e' on evidence screen; fails soft)
-- [ ] 4. codex/report-builder — editable Markdown report with site notes
-- [ ] 5. codex/privacy-anonymization — MAC/IP/SSID anonymization before
-  export, mapping in memory only
+- [x] 4. codex/report-builder — editable Markdown report with site notes
+  (DONE: commit 6f59a10, 30/30 tests; build_report/build_preview/
+  write_report_file in tracelens/report.py; 'r' on the evidence screen;
+  SSID->BSSID evidence added to the analyzer)
+- [x] 5. codex/privacy-anonymization — MAC/IP/SSID anonymization before
+  export, mapping in memory only (DONE: tracelens/privacy.py +
+  ctrl+r toggle on the report screen; 38/38 tests)
+
+All five roadmap branches are complete. Per the project owner's
+instruction, codex/report-builder and codex/privacy-anonymization remain
+unmerged feature branches - do not merge them into master/main.
 
 ## Next branch recommendation
 
-`codex/report-builder` — the analysis, review, and explanation layers are
-done; next is the editable Markdown report with site notes. Keep evidence
-discipline in the report: measured facts and explicit limitations sections,
-never root-cause claims. Design it so the privacy/anonymization branch
-(item 5) can wrap the same builder to redact identifiers.
+None — all five roadmap items are complete. Possible follow-ups: a
+per-channel retry split, an independent pcapng truncation walk, or wiring
+the anonymized export into a CLI batch mode.
+
+## Known limitations after branch 5
+
+- The identity map from build_anonymized_report is lost when the process
+  exits (by design: mapping kept in memory only).
+- SSID pseudonyms follow the analyzer's sorted order, so re-running the
+  tool on a modified capture can assign a different pseudonym to the same
+  SSID; there is no cross-run identity persistence.
+- The report screen's site-notes TextArea intentionally captures printable
+  keys; toggles on that screen must use ctrl-style keys (Textual filters
+  consumed keys out of screen bindings).

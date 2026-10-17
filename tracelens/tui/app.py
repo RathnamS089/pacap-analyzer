@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import (
     Footer,
@@ -29,6 +30,7 @@ from tracelens.explainer import (
     ExplainerUnavailable,
     explain_analysis,
 )
+from tracelens.privacy import build_anonymized_report
 from tracelens.report import build_report, write_report_file
 from tracelens.tui.service import (
     AnalysisError,
@@ -188,21 +190,36 @@ class AnalysisScreen(Screen):
 
 
 class ReportScreen(Screen):
-    """Preview the Markdown report, edit site notes, and save it."""
+    """Preview the Markdown report, edit site notes, and save it.
+
+    Press "ctrl+r" to toggle anonymization: the preview re-renders redacted
+    (MACs/IPs/SSIDs replaced with placeholders, capture path neutralized)
+    and saving writes the anonymized copy. The identity map stays in
+    memory on the screen; it is never written to disk.
+    """
 
     BINDINGS = [
         ("escape", "app.pop_screen", "Back to evidence"),
+        Binding(
+            "ctrl+r",
+            "app.toggle_anonymization",
+            "Toggle anonymization",
+        ),
     ]
 
     def __init__(self, result: AnalysisResult) -> None:
         super().__init__()
         self.result = result
+        self.anonymized = False
+        self.report: Dict[str, Any] = {}
+        self.identity_map: Dict[str, Dict[str, str]] = {}
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield Label(
             "[b]Report[/] — read-only preview; edit site notes, type a .md "
-            "path and press Enter (or s) to save.",
+            "path and press Enter (or s) to save. ctrl+r toggles "
+            "anonymization.",
             id="report-title",
         )
         yield Static("", id="report-preview")
@@ -223,9 +240,28 @@ class ReportScreen(Screen):
                 app.action_save_report()
 
     def on_mount(self) -> None:
-        report = build_report(self.result.analysis)
-        self.report = report
-        self.query_one("#report-preview", Static).content = report["markdown"]
+        self._rebuild_report()
+
+    def _rebuild_report(self) -> None:
+        """Render the report (plain or anonymized) into the preview."""
+        site_notes = self.query_one("#site-notes", TextArea).text
+        if self.anonymized:
+            self.report, self.identity_map = build_anonymized_report(
+                self.result.analysis,
+                site_notes=site_notes,
+            )
+        else:
+            self.report = build_report(
+                self.result.analysis, site_notes=site_notes
+            )
+            self.identity_map = {}
+        self.query_one("#report-preview", Static).content = self.report[
+            "markdown"
+        ]
+        mode = "anonymized" if self.anonymized else "plain"
+        self.refresh_status(
+            "Report mode: {mode} (ctrl+r toggles).".format(mode=mode)
+        )
 
     def refresh_status(self, message: str) -> None:
         self.query_one("#report-status", Static).content = message
@@ -292,6 +328,13 @@ class TraceLensApp(App[None]):
             return
         self.push_screen(ReportScreen(self.analysis))
 
+    def action_toggle_anonymization(self) -> None:
+        """Flip the report screen between plain and anonymized modes."""
+        screen = self.screen
+        if isinstance(screen, ReportScreen):
+            screen.anonymized = not screen.anonymized
+            screen._rebuild_report()
+
     def action_save_report(self) -> None:
         """Save the report as Markdown using the path typed on the screen.
 
@@ -311,11 +354,20 @@ class TraceLensApp(App[None]):
             return
 
         # Rebuild with the site notes currently in the editor so the saved
-        # report reflects what the user reviewed on screen.
-        report = build_report(
-            screen.result.analysis,
-            site_notes=screen.query_one("#site-notes", TextArea).text,
-        )
+        # report reflects what the user reviewed on screen; the screen's
+        # anonymization mode decides whether identifiers are redacted.
+        site_notes = screen.query_one("#site-notes", TextArea).text
+        identity_map = {}
+        if screen.anonymized:
+            report, identity_map = build_anonymized_report(
+                screen.result.analysis,
+                site_notes=site_notes,
+            )
+        else:
+            report = build_report(
+                screen.result.analysis,
+                site_notes=site_notes,
+            )
         try:
             written = write_report_file(report, Path(path_text))
         except Exception as err:  # noqa: BLE001 - fail soft, keep the screen

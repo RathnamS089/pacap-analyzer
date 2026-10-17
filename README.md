@@ -83,12 +83,16 @@ On the evidence screen, press **r** to open the report screen:
 3. Type a `.md` path and press **Enter** to save the full report: YAML front
    matter (title, capture path, date, model version) followed by the
    Markdown body. The file is plain Markdown, editable in any text editor.
-4. Press Escape to return to the evidence screen.
+4. Press **ctrl+r** to toggle anonymization before saving: client and AP
+   MACs become stable placeholders (MAC-01, MAC-02, …), SSIDs become
+   readable pseudonyms (Site 1, Site 2, …), IP addresses are replaced, and
+   the front-matter capture path is reduced to the file name. The saved
+   file contains no original identifiers. The identity map exists only in
+   memory for the current session — TraceLens never writes it anywhere.
+5. Press Escape to return to the evidence screen.
 
 The report states only what the capture supports: measured facts and
-explicit limitations, never root-cause claims. Client MACs and SSIDs are
-written as captured — run the anonymization pass (privacy branch) before
-sharing a report outside your organization.
+explicit limitations, never root-cause claims.
 
 ## Optional: plain-language notes from a local model
 
@@ -132,8 +136,9 @@ Facts are safe to serialize to JSON.
   the Channel field) report no channel evidence.
 - Retry rate counts frames whose retry bit is set — a proxy for busy air or
   marginal links, not proof of either.
-- Client MACs are reported as captured; anonymization before report export is
-  planned for a dedicated privacy branch.
+- Client MACs are reported as captured in plain mode; the report screen's
+  anonymization (ctrl+r) replaces them with stable placeholders before
+  export, keeping the mapping in memory only.
 - Captures without beacons for an SSID (e.g. hidden-network setups) cannot
   map SSIDs to BSSIDs; the report then lists SSIDs without AP radios.
 
@@ -142,5 +147,5 @@ Facts are safe to serialize to JSON.
 1. ~~Terminal UI (Textual): pick a capture, review evidence and limitations.~~
 2. ~~Optional local-model explanations via Ollama (never required; evidence
    works without it).~~
-3. ~~Editable Markdown report export with site notes (anonymization follows
-   in the privacy branch).~~
+3. ~~Editable Markdown report export with site notes~~ (anonymization:
+   done via the report screen's ctrl+r toggle and `tracelens.privacy`).

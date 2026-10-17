@@ -71,6 +71,13 @@ when DevRelay tooling is available, this maps to `submit_agent_session`
       "event": "green",
       "detail": "Implemented the report layer end to end. Analyzer: beacons now map each SSID to the BSSIDs (AP radios) seen beaconing it (new ssid_bssids fact detail; multi-BSSID/multi-channel test added). Builder (tracelens/report.py): build_report renders title + front matter dict (capture_path/date/model_version) + Markdown body from analyzer facts/limitations/notes with an editable Site Notes section kept separate from measured evidence; build_preview returns the body for the read-only TUI screen; write_report_file composes the YAML front-matter block + H1 + body into a .md file and rejects non-.md paths. TUI: 'r' on the evidence screen opens a ReportScreen with read-only preview, editable site-notes TextArea, and a save-path Input — Enter in the path field saves (Textual inputs swallow printable keys, so the 's' binding was dropped); bad save paths fail soft with a friendly status message. Replaced the earlier mis-authored report tests (a beacon-only fixture cannot produce retry/MAC evidence) with a full-scenario fixture. Session-lease crashes twice reverted uncommitted edits mid-branch; state recovered each time from git + rewritten files.",
       "evidence": "pytest: 29 passed (9 analyzer, 6 report, 3 TUI report, 11 prior)"
+    },
+    {
+      "timestamp": "2026-10-17 ~23:10 IST",
+      "branch": "codex/privacy-anonymization",
+      "event": "green",
+      "detail": "Added tracelens/privacy.py: build_anonymized_report wraps the report builder and redacts MACs (stable MAC-01/MAC-02 placeholders, broadcast excluded), SSIDs (readable Site 1/Site 2 pseudonyms following the analyzer's deterministic order), IPv4 addresses, and the front-matter capture path (reduced to file name) in body AND front matter. The identity map is returned in memory only - never persisted - and the analyzer's dict is never mutated. Wired into the TUI report screen: ctrl+r toggles anonymization, the preview re-renders live, and saving writes the redacted copy. Textual 8.2.8 pitfall discovered en route: Screen._binding_chain deletes key bindings (even priority ones) for any key a focused Input/TextArea consumes, so printable-key bindings on screens with text widgets are unreachable; fixed by binding ctrl+r instead.",
+      "evidence": "pytest: 38 passed (6 privacy, 2 TUI privacy, 30 prior)"
     }
   ]
 }
