@@ -21,6 +21,12 @@ from textual.widgets import (
     Static,
 )
 
+from tracelens.explainer import (
+    DEFAULT_MODEL as DEFAULT_EXPLAINER_MODEL,
+    DEFAULT_OLLAMA_URL as DEFAULT_EXPLAINER_URL,
+    ExplainerUnavailable,
+    explain_analysis,
+)
 from tracelens.tui.service import (
     AnalysisError,
     AnalysisResult,
@@ -35,6 +41,9 @@ _KIND_TITLES = {
     "signal_strength": "Signal strength (RSSI)",
     "client_auth_frames": "Client association activity",
 }
+
+DEFAULT_OLLAMA_URL = DEFAULT_EXPLAINER_URL
+DEFAULT_MODEL = DEFAULT_EXPLAINER_MODEL
 
 
 def _fact_lines(fact: Dict[str, Any]) -> List[str]:
@@ -132,7 +141,10 @@ class PathEntryScreen(Screen):
 class AnalysisScreen(Screen):
     """Review the measured evidence and explicit limitations."""
 
-    BINDINGS = [("escape", "app.pop_screen", "Back to path entry")]
+    BINDINGS = [
+        ("escape", "app.pop_screen", "Back to path entry"),
+        ("e", "app.request_explanation", "Explain (local model)"),
+    ]
 
     def __init__(self, result: AnalysisResult) -> None:
         super().__init__()
@@ -151,6 +163,7 @@ class AnalysisScreen(Screen):
         yield ListView(id="facts-list")
         yield Static("[b]Limitations of this capture[/b]", id="limits-heading")
         yield ListView(id="limitations-list")
+        yield Static("", id="explanation-box")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -194,12 +207,20 @@ class TraceLensApp(App[None]):
     }
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        explainer_url: str = DEFAULT_OLLAMA_URL,
+        explainer_model: str = DEFAULT_MODEL,
+    ) -> None:
         super().__init__()
         self.analysis: Optional[AnalysisResult] = None
         self.error_message: Optional[str] = None
         self._analyzing = False
         self.service = TraceLensService()
+        self.explainer_url = explainer_url
+        self.explainer_model = explainer_model
+        self.explanation: Optional[str] = None
+        self.explainer_error: Optional[str] = None
 
     def get_default_screen(self) -> Screen:
         """The entry screen is the base of the screen stack."""
@@ -216,6 +237,47 @@ class TraceLensApp(App[None]):
 
     def action_back_to_entry(self) -> None:
         self.pop_screen()
+
+    def action_request_explanation(self) -> None:
+        """Ask the user's local Ollama model for plain-language notes.
+
+        Strictly optional and fails soft: on any explainer error the
+        evidence screen stays fully usable and the box shows a friendly
+        message instead of a traceback. The model only ever receives the
+        already-extracted facts and limitations, never raw packets.
+        """
+        if self.analysis is None or self.explanation is not None:
+            return
+        self.explainer_error = None
+        box = self._explanation_box()
+        if box is not None:
+            box.content = "Asking the local model…"
+        try:
+            result = explain_analysis(
+                self.analysis.analysis,
+                model=self.explainer_model,
+                url=self.explainer_url,
+            )
+        except ExplainerUnavailable as err:
+            self.explainer_error = str(err)
+            if box is not None:
+                box.content = str(err)
+            return
+        self.explanation = result.text
+        if box is not None:
+            box.content = (
+                "[b]Plain-language notes (local model, optional):[/b]\n"
+                + result.text
+            )
+
+    def _explanation_box(self) -> Optional[Static]:
+        screen = self.screen
+        if not isinstance(screen, AnalysisScreen):
+            return None
+        try:
+            return screen.query_one("#explanation-box", Static)
+        except Exception:  # noqa: BLE001 - screen may not be mounted yet
+            return None
 
     def analyze_capture(self, path: str) -> None:
         """Analyze the capture at ``path`` read-only and show the evidence.

@@ -85,15 +85,17 @@ Hard rules that must hold in every branch:
 - [x] 2. codex/tui-analysis-shell — Textual TUI: path entry → analyze →
   evidence/limitations review (DONE: commit bf5c63f, 13/13 tests; app runs
   via `.venv/bin/tracelens`; agent_session.md created for DevRelay submission)
-- [ ] 3. codex/ollama-explainer — optional local-model explanations
-  (never required; evidence works without it)
+- [x] 3. codex/ollama-explainer — optional local-model explanations
+  (DONE: never required, evidence works without it; tests use in-process
+  fake Ollama + closed port; press 'e' on evidence screen; fails soft)
 - [ ] 4. codex/report-builder — editable Markdown report with site notes
 - [ ] 5. codex/privacy-anonymization — MAC/IP/SSID anonymization before
   export, mapping in memory only
 
 ## Next branch recommendation
 
-`codex/ollama-explainer` — the TUI shell is done; next is the optional
-local-model explanation layer. Keep it strictly optional: the evidence
-review flow must work fully without Ollama installed or running. Wrap in
-tests that skip gracefully when no local model is reachable.
+`codex/report-builder` — the analysis, review, and explanation layers are
+done; next is the editable Markdown report with site notes. Keep evidence
+discipline in the report: measured facts and explicit limitations sections,
+never root-cause claims. Design it so the privacy/anonymization branch
+(item 5) can wrap the same builder to redact identifiers.

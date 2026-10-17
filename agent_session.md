@@ -50,6 +50,20 @@ when DevRelay tooling is available, this maps to `submit_agent_session`
       "branch": "codex/tui-analysis-shell",
       "event": "docs",
       "detail": "README updated: new 'Using the terminal UI' section (tracelens command, Enter-to-analyze, Escape to go back, friendly error handling), intro and roadmap updated to reflect the TUI being done."
+    },
+    {
+      "timestamp": "2026-10-16 ~11:45 IST",
+      "branch": "codex/ollama-explainer",
+      "event": "green",
+      "detail": "Implemented tracelens/explainer.py: build_prompt serializes only facts/limitations/notes (never raw packets) with hard-coded evidence rules (no root causes, absent packets are not proof, no invented numbers); explain_analysis talks to Ollama's local REST API via stdlib urllib (no new dependency), raising friendly ExplainerUnavailable when Ollama is down, returns a JSON error payload, or answers empty. Tests run against an in-process fake Ollama HTTP server plus a closed port for the unavailable path. Discovered en route: HTTPError must be caught before URLError and its JSON body read to surface Ollama's own error message.",
+      "evidence": "pytest tests/test_explainer.py: 4 passed; full suite 17 passed"
+    },
+    {
+      "timestamp": "2026-10-16 ~12:30 IST",
+      "branch": "codex/ollama-explainer",
+      "event": "green",
+      "detail": "Wired the explainer into the TUI: press 'e' on the evidence screen asks the user's local Ollama model for plain-language notes; fails soft (friendly message in the explanation box, evidence review stays fully usable). TraceLensApp takes explainer_url/explainer_model kwargs for dependency injection so tests drive a fake server. Fixed en route: Textual screen-binding actions need the 'app.' namespace without the action_ prefix ('app.request_explanation' maps to the app's action_request_explanation); and a two-statement string bug where the explanation text was a no-op expression and never reached the box.",
+      "evidence": "pytest tests/test_tui_explainer.py: 2 passed; full suite 19 passed in 3.71s"
     }
   ]
 }

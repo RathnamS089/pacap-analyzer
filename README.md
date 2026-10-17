@@ -7,9 +7,9 @@ machine.
 
 TraceLens is under active development. The current build provides the
 capture-analysis core (reader + evidence analyzer) as a tested Python
-package plus a terminal UI (Textual) for the load → analyze → review
-evidence/limitations flow; local-model explanations and report export
-arrive in upcoming branches.
+package, a terminal UI (Textual) for the load → analyze → review
+evidence/limitations flow, and an optional local-model explainer (Ollama);
+report export arrives in an upcoming branch.
 
 ## What it does today
 
@@ -72,6 +72,22 @@ Reader/analyzer failures (missing file, wrong format, truncation) are shown
 on the entry screen as friendly messages; the app never crashes on a bad
 path.
 
+## Optional: plain-language notes from a local model
+
+On the evidence screen, press **e** to ask your own local Ollama model for
+plain-language notes on the measured evidence. This feature is entirely
+optional and off by default:
+
+- Requires Ollama running locally (`http://localhost:11434`, model
+  `llama3.2:3b` by default). Without it, TraceLens works fully — the
+  evidence screen never depends on it.
+- Nothing leaves your machine: the model runs locally and receives only
+  the extracted facts and limitations, never raw packets or payloads.
+- The prompt hard-codes the evidence rules: describe what WAS measured,
+  repeat limitations as unanswerable, never propose root causes.
+- If Ollama is unreachable, the app shows a friendly message and the
+  evidence review stays fully usable.
+
 ## Using the library
 
 ```python
@@ -104,6 +120,6 @@ Facts are safe to serialize to JSON.
 ## Roadmap
 
 1. ~~Terminal UI (Textual): pick a capture, review evidence and limitations.~~
-2. Optional local-model explanations via Ollama (never required; evidence
-   works without it).
+2. ~~Optional local-model explanations via Ollama (never required; evidence
+   works without it).~~
 3. Editable Markdown report export with site notes and anonymization.
