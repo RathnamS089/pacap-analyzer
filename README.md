@@ -101,7 +101,7 @@ plain-language notes on the measured evidence. This feature is entirely
 optional and off by default:
 
 - Requires Ollama running locally (`http://localhost:11434`, model
-  `llama3.2:3b` by default). Without it, TraceLens works fully — the
+  `qwen2.5:1.5b` by default). Without it, TraceLens works fully — the
   evidence screen never depends on it.
 - Nothing leaves your machine: the model runs locally and receives only
   the extracted facts and limitations, never raw packets or payloads.

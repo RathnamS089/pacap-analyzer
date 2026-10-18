@@ -19,7 +19,8 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
-DEFAULT_MODEL = "llama3.2:3b"
+DEFAULT_MODEL = "qwen2.5:1.5b"
+DEFAULT_TIMEOUT = 120.0
 
 
 class ExplainerUnavailable(Exception):
@@ -75,7 +76,7 @@ def explain_analysis(
     analysis: Dict[str, Any],
     model: str = DEFAULT_MODEL,
     url: str = DEFAULT_OLLAMA_URL,
-    timeout: float = 30.0,
+    timeout: float = DEFAULT_TIMEOUT,
 ) -> ExplanationResult:
     """Ask the local Ollama model for plain-language notes on the evidence.
 
@@ -129,6 +130,8 @@ def explain_analysis(
             "Ollama returned an error: {e}".format(e=body["error"])
         )
     text = str(body.get("response", "")).strip()
+    if "</think>" in text:
+        text = text.split("</think>", 1)[1].strip()
     if not text:
         raise ExplainerUnavailable(
             "Ollama returned an empty response; try again or use a "
